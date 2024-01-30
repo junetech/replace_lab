@@ -51,6 +51,8 @@
 #include <vector>
 #include <iomanip>
 #include <cmath>
+#include <stdexcept>
+#include <limits>
 
 #ifdef USE_GOOGLE_HASH
 #include <google/dense_hash_map>
@@ -97,7 +99,7 @@ typedef double prec;
 #define INT_UP(a) (int)(a) + 1
 #define UNSIGNED_CONVERT(a) (unsigned)(1.0 * (a) + 0.5f)
 
-#define IS_PRECISION_EQUAL(a, b) (fabs((a)-(b)) <= PREC_EPSILON)
+#define IS_PRECISION_EQUAL(a, b) (fabs((a) - (b)) <= PREC_EPSILON)
 
 #ifdef USE_GOOGLE_HASH
 #define HASH_MAP google::dense_hash_map
@@ -135,7 +137,6 @@ typedef double prec;
 #define LAYER_ASSIGN_3DIC MIN_TIER_ORDER                  /* MAX_AREA_DIS_DIV */
 ///////////////////////////////////////////////////////////////////////////
 
-
 struct POS;
 
 struct FPOS {
@@ -152,7 +153,7 @@ struct FPOS {
   void SetZero();
 
   prec GetX();
-  prec GetY(); 
+  prec GetY();
 
   void Add(FPOS a);
   void SetAdd(FPOS a, FPOS b);
@@ -187,28 +188,27 @@ struct POS {
   void SetAdd(POS a, POS b);
   void Min(POS a);
   void SetMin(POS a, POS b);
-  void Max(POS a); 
+  void Max(POS a);
   void SetMax(POS a, POS b);
   int GetProduct();
   void SetXProjection(int a, int b);
   void SetYProjection(int a, int b);
   void SetProjection(POS a, POS b);
   void SetXYProjection(POS a, POS b);
-  void Dump(); 
+  void Dump();
   void Dump(std::string a);
 };
 
-
 // for saving pinName
-// If it's lied in the PIN structure, 
+// If it's lied in the PIN structure,
 // it'll enlarge the runtime
 extern std::vector< std::vector< std::string > > mPinName;
 extern std::vector< std::vector< std::string > > tPinName;
 
-extern std::vector<std::string> moduleNameStor; 
-extern std::vector<std::string> terminalNameStor;
-extern std::vector<std::string> cellNameStor;
-extern std::vector<std::string> netNameStor;
+extern std::vector< std::string > moduleNameStor;
+extern std::vector< std::string > terminalNameStor;
+extern std::vector< std::string > cellNameStor;
+extern std::vector< std::string > netNameStor;
 
 struct RECT {
   FPOS pmin;
@@ -235,9 +235,8 @@ struct PIN {
   int Y_MIN;
   int X_MAX;
   int Y_MAX;
-  PIN(); 
+  PIN();
 };
-
 
 // *.nodes -> not isTerminal
 // Module Instance
@@ -260,12 +259,10 @@ struct MODULE {
   POS pmin_lg;
   POS pmax_lg;
 
-  const char* Name();
+  const char *Name();
   MODULE();
   void Dump(std::string a);
 };
-
-
 
 // *.nodes -> isTerminal // isTerminalNI
 // Terminal Instance
@@ -286,7 +283,7 @@ struct TERM {
            //    int tier;
   bool isTerminalNI;
   prec PL_area;
-  const char* Name();
+  const char *Name();
 
   TERM();
   void Dump();
@@ -321,7 +318,7 @@ struct CELL {
   FPOS half_den_size_org_befo_bloating;
   FPOS *pof_tmp;
   PIN **pin_tmp;
-  const char* Name();
+  const char *Name();
   void Dump();
 };
 
@@ -338,9 +335,8 @@ class SHAPE {
   prec width;
   prec height;
 
-  SHAPE(std::string _name, std::string _instName, 
-      int _idx, prec _llx, prec _lly,
-      prec _width, prec _height);
+  SHAPE(std::string _name, std::string _instName, int _idx, prec _llx,
+        prec _lly, prec _width, prec _height);
   void Dump();
 };
 
@@ -365,11 +361,8 @@ class TwoPinNets {
   int j;
 
   TwoPinNets();
-  TwoPinNets(int start_modu, int end_modu, 
-      prec rect_dist, int i, int j);
-
+  TwoPinNets(int start_modu, int end_modu, prec rect_dist, int i, int j);
 };
-
 
 class ROUTRACK {
  public:
@@ -378,13 +371,12 @@ class ROUTRACK {
   int layer;  // 1:M_Layer1, 2:M_Layer2, ..., etc.
   int netIdx;
   ROUTRACK();
-  ROUTRACK(struct FPOS _from, struct FPOS _to, 
-      int _layer, int _netIdx);
+  ROUTRACK(struct FPOS _from, struct FPOS _to, int _layer, int _netIdx);
   void Dump();
 };
 
 struct NET {
-  public:
+ public:
   std::map< int, UFPin > mUFPin;
   std::vector< TwoPinNets > two_pin_nets;
   std::vector< ROUTRACK > routing_tracks;
@@ -397,8 +389,8 @@ struct NET {
   FPOS sum_num2;
   FPOS sum_denom1;
   FPOS sum_denom2;
-  PIN **pin;  // will have modified pin info. see opt.cpp
-  PIN **pin2; // will store original pin info. used for bookshelf writing.
+  PIN **pin;   // will have modified pin info. see opt.cpp
+  PIN **pin2;  // will store original pin info. used for bookshelf writing.
   FPOS terminalMin;
   FPOS terminalMax;
 
@@ -413,9 +405,9 @@ struct NET {
   int mod_idx;
   prec timingWeight;
   prec customWeight;
-  prec wl_rsmt;             // lutong
+  prec wl_rsmt;  // lutong
 
-  const char* Name();
+  const char *Name();
   NET();
 };
 
@@ -507,7 +499,6 @@ struct TIER {
 };
 
 enum { STDCELLonly, MIXED };
-
 
 extern int gVerbose;
 
@@ -655,7 +646,6 @@ extern prec adjust_ratio;
 extern bool is_inflation_h;
 extern bool flg_noroute;
 
-
 extern prec ALPHAmGP;
 extern prec ALPHAcGP;
 extern prec ALPHA;
@@ -753,7 +743,8 @@ extern std::vector< int > horizontalCapacity;
 extern std::vector< prec > minWireWidth;
 extern std::vector< prec > minWireSpacing;
 extern std::vector< prec > viaSpacing;
-extern std::vector< std::tuple< int, int, int, int, int, int, int > > edgeCapAdj;
+extern std::vector< std::tuple< int, int, int, int, int, int, int > >
+    edgeCapAdj;
 extern prec gridLLx, gridLLy;
 extern prec tileWidth, tileHeight;
 extern prec blockagePorosity;
@@ -851,7 +842,7 @@ extern bool autoEvalRC_CMD;
 extern bool onlyLG_CMD;
 extern bool isFastMode;
 
-extern Tcl_Interp* _interp;
+extern Tcl_Interp *_interp;
 
 //////////////////////////////////////////////////////////////////////////
 // Defined in main.cpp ///////////////////////////////////////////////////
@@ -914,7 +905,6 @@ void rdft2dsort(int, int, int, prec **);
 
 void read_macro(char *fn);
 
-
 void tier_assign(int);
 void tier_assign_with_macro(void);
 void tier_assign_without_macro(void);
@@ -932,9 +922,9 @@ void pre_mac_tier(void);
 
 inline prec getStepSizefromEPs(prec hpwl, prec hpwlEP, prec hpwlSTD,
                                prec basePCOF, prec baseRange) {
-  return std::min(basePCOF + baseRange, basePCOF +
-                                       baseRange * ((prec)fabs(hpwl - hpwlSTD) /
-                                                    (prec)fabs(hpwlEP - hpwlSTD)));
+  return std::min(basePCOF + baseRange,
+                  basePCOF + baseRange * ((prec)fabs(hpwl - hpwlSTD) /
+                                          (prec)fabs(hpwlEP - hpwlSTD)));
 }
 
 // writing Bookshelf function
@@ -942,11 +932,12 @@ void WriteBookshelf();
 void WriteBookshelfForGR();
 
 void CallDetailPlace();
-void CallNtuPlacer3(const char *tier_dir, const char *tier_aux, const char *tier_pl);
-void CallNtuPlacer4h(const char *tier_dir, const char *tier_aux, const char *tier_pl);
+void CallNtuPlacer3(const char *tier_dir, const char *tier_aux,
+                    const char *tier_pl);
+void CallNtuPlacer4h(const char *tier_dir, const char *tier_aux,
+                     const char *tier_pl);
 
-
-// 
+//
 // Some utils for RePlAce.
 //
 #include "util.h"
