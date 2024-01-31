@@ -34,10 +34,10 @@ def read_bookshelf(aux_path: PurePath) -> PhysDesignData:
     with open(aux_path) as file:
         row = file.readline()
         filename_list = row.split()
-    scl_path = PurePath(aux_path.parents[0], filename_list[6])
-    node_path = PurePath(aux_path.parents[0], filename_list[2])
-    pl_path = PurePath(aux_path.parents[0], filename_list[5])
-    nets_path = PurePath(aux_path.parents[0], filename_list[3])
+    scl_path = PurePath(aux_path.parent, filename_list[6])
+    node_path = PurePath(aux_path.parent, filename_list[2])
+    pl_path = PurePath(aux_path.parent, filename_list[5])
+    nets_path = PurePath(aux_path.parent, filename_list[3])
 
     # 병렬화 시도했으나, 오히려 더 느림
     # from concurrent.futures import ProcessPoolExecutor
@@ -69,11 +69,54 @@ def read_bookshelf(aux_path: PurePath) -> PhysDesignData:
     return pd_data
 
 
-def write_to_lefdef(pd_data: PhysDesignData):
+def write_to_lefdef(pd_data: PhysDesignData, aux_path: PurePath):
+    output_dir, output_filename = aux_path.parent, aux_path.stem + "_lefdef"
+    half_pin_dimension = 0.1
+
+    # write LEF
+    product_version = 5.8
+    # Units
+    database_microns = 100
+    lef_path = PurePath(output_dir, output_filename + ".lef")
+    with open(lef_path, "w") as file:
+        # LEF/DEF product version
+        file.write(f"VERSION {product_version} ;\n")
+        b_str = f"UNITS\n  DATABASE MICRONS {database_microns} ;\nEND UNITS\n\n"
+        file.write(b_str)
+        # MACRO
+        for cell_name, cell in pd_data.object_db.nodes.items():
+            b_str = f"MACRO {cell_name}\n  CLASS CORE ;\n"
+            b_str += "  SITE core ;\n"
+            b_str += f"  SIZE {cell.dx} BY {cell.dy} ;\n"
+            # input pin
+            for pin_name in pd_data.nets.get_input_pins(cell_name):
+                b_str += f"  PIN {pin_name}\n"
+                b_str += "    DIRECTION INPUT ;\n"
+                b_str += "    PORT\n      LAYER metal1 ;\n"
+                x_offset, y_offset = pd_data.nets.pin_dict[pin_name].offset
+                lx, ly = x_offset - half_pin_dimension, y_offset - half_pin_dimension
+                hx, hy = x_offset + half_pin_dimension, y_offset + half_pin_dimension
+                b_str += f"        RECT ( {lx} {ly} ) ( {hx} {hy} ) ;\n"
+                b_str += f"  END {pin_name}\n"
+            # output pin
+            for pin_name in pd_data.nets.get_output_pins(cell_name):
+                b_str += f"  PIN {pin_name}\n"
+                b_str += "    DIRECTION OUTPUT ;\n"
+                b_str += "    PORT\n      LAYER metal1 ;\n"
+                x_offset, y_offset = pd_data.nets.pin_dict[pin_name].offset
+                lx, ly = x_offset - half_pin_dimension, y_offset - half_pin_dimension
+                hx, hy = x_offset + half_pin_dimension, y_offset + half_pin_dimension
+                b_str += f"        RECT ( {lx} {ly} ) ( {hx} {hy} ) ;\n"
+                b_str += f"  END {pin_name}\n"
+
+            b_str += f"END {cell_name}\n\n"
+            file.write(b_str)
+        # EoF
+        file.write("END LIBRARY\n")
     return True
 
 
-def main(aux_path: str):
+def main(aux_path_str: str):
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.INFO)
     # Logging to a .log file
@@ -85,8 +128,9 @@ def main(aux_path: str):
     global START_DT
     logging.info(f"{__name__} program start @ {START_DT}"[:-3])
 
-    pd_data = read_bookshelf(PurePath(aux_path))
-    write_to_lefdef(pd_data)
+    aux_path = PurePath(aux_path_str)
+    pd_data = read_bookshelf(aux_path)
+    write_to_lefdef(pd_data, aux_path)
 
 
 if __name__ == "__main__":

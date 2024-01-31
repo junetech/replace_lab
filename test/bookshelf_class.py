@@ -558,6 +558,16 @@ class Nets:
     def assign_pin(self, pin_name: str, net_name: str):
         self.net_dict[net_name].pin_names.append(pin_name)
 
+    def get_input_pins(self, cell_name: str) -> list[str]:
+        if cell_name not in self.cell_ipin_name_dict:
+            return []
+        return self.cell_ipin_name_dict[cell_name]
+
+    def get_output_pins(self, cell_name: str) -> list[str]:
+        if cell_name not in self.cell_opin_name_dict:
+            return []
+        return self.cell_opin_name_dict[cell_name]
+
 
 def read_net_input(nets_path: PurePath) -> Nets:
     """reads placement input file and changes the location information of the object_db.
