@@ -470,12 +470,12 @@ class Pin:
     def __init__(
         self,
         cell_name: str,
-        is_input: bool,
+        io: str,
         x_offset: float,
         y_offset: float,
     ):
         self.cell_name = cell_name
-        self.is_input = is_input
+        self.io = io
         self.offset = (x_offset, y_offset)
 
 
@@ -488,85 +488,42 @@ class Net:
 
 class Nets:
     def __init__(self):
-        self.pin_name_list: list[str] = []
+        self.pin_coord_dict: dict[str, dict[tuple[float, float], str]] = {}
+        self.pin_type_count: dict[str, dict[str, int]] = {}
         self.pin_dict: dict[str, Pin] = {}
-        self.cell_ipin_name_dict: dict[str, list[str]] = {}
-        self.cell_opin_name_dict: dict[str, list[str]] = {}
-        self.net_name_list: list[str] = []
         self.net_dict: dict[str, Net] = {}
 
-    def new_pin_name(self, cell_name: str, is_input: bool):
-        if is_input:
-            return f"{cell_name}I{len(self.cell_ipin_name_dict[cell_name])}"
-        else:
-            return f"{cell_name}O{len(self.cell_opin_name_dict[cell_name])}"
+    def add_pin(self, cell_name: str, io: str, x_offset: float, y_offset: float) -> str:
+        if cell_name not in self.pin_coord_dict:
+            self.pin_coord_dict[cell_name] = {}
+        if (x_offset, y_offset) in self.pin_coord_dict[cell_name]:
+            return self.pin_coord_dict[cell_name][(x_offset, y_offset)]
 
-    def add_pin(
-        self, cell_name: str, io: str, x_offset: float, y_offset: float
-    ) -> list[str]:
-        pin_names: list[str] = []
-        if io == "I":
-            pin_names.append(self.add_input_pin(cell_name, x_offset, y_offset))
-        elif io == "O":
-            pin_names.append(self.add_output_pin(cell_name, x_offset, y_offset))
-        elif io == "B":
-            pin_names.append(self.add_input_pin(cell_name, x_offset, y_offset))
-            pin_names.append(self.add_output_pin(cell_name, x_offset, y_offset))
+        if cell_name not in self.pin_type_count:
+            self.pin_type_count[cell_name] = {}
+        if io not in self.pin_type_count[cell_name]:
+            self.pin_type_count[cell_name][io] = 1
         else:
-            raise ValueError("Pin type should be 'I' or 'O' or 'B'")
-        return pin_names
+            self.pin_type_count[cell_name][io] += 1
+        new_pin_name = f"{io}{self.pin_type_count[cell_name][io]}"
 
-    def add_input_pin(self, cell_name: str, x_offset: float, y_offset: float) -> str:
-        # Try finding the pin at the offset coordinate
-        if cell_name in self.cell_ipin_name_dict:
-            for pin_name in self.cell_ipin_name_dict[cell_name]:
-                if self.pin_dict[pin_name].offset == (x_offset, y_offset):
-                    return pin_name
-        else:
-            self.cell_ipin_name_dict[cell_name] = []
-        # If there is none, make a new pin
-        new_pin = Pin(cell_name, True, x_offset, y_offset)
-        new_pin_name = self.new_pin_name(cell_name, True)
-        self.pin_name_list.append(new_pin_name)
+        new_pin = Pin(cell_name, io, x_offset, y_offset)
+        self.pin_coord_dict[cell_name][(x_offset, y_offset)] = new_pin_name
         self.pin_dict[new_pin_name] = new_pin
-        self.cell_ipin_name_dict[cell_name].append(new_pin_name)
-
-        return new_pin_name
-
-    def add_output_pin(self, cell_name: str, x_offset: float, y_offset: float) -> str:
-        # Try finding the pin at the offset coordinate
-        if cell_name in self.cell_opin_name_dict:
-            for pin_name in self.cell_opin_name_dict[cell_name]:
-                if self.pin_dict[pin_name].offset == (x_offset, y_offset):
-                    return pin_name
-        else:
-            self.cell_opin_name_dict[cell_name] = []
-        # If there is none, make a new pin
-        new_pin = Pin(cell_name, False, x_offset, y_offset)
-        new_pin_name = self.new_pin_name(cell_name, False)
-        self.pin_name_list.append(new_pin_name)
-        self.pin_dict[new_pin_name] = new_pin
-        self.cell_opin_name_dict[cell_name].append(new_pin_name)
 
         return new_pin_name
 
     def add_net(self, net_name: str, net_degree: int):
-        self.net_name_list.append(net_name)
         new_net = Net(net_name, net_degree)
         self.net_dict[net_name] = new_net
 
     def assign_pin(self, pin_name: str, net_name: str):
         self.net_dict[net_name].pin_names.append(pin_name)
 
-    def get_input_pins(self, cell_name: str) -> list[str]:
-        if cell_name not in self.cell_ipin_name_dict:
+    def get_pins(self, cell_name: str) -> list[str]:
+        if cell_name not in self.pin_coord_dict:
             return []
-        return self.cell_ipin_name_dict[cell_name]
-
-    def get_output_pins(self, cell_name: str) -> list[str]:
-        if cell_name not in self.cell_opin_name_dict:
-            return []
-        return self.cell_opin_name_dict[cell_name]
+        return list(self.pin_coord_dict[cell_name].values())
 
 
 def read_net_input(nets_path: PurePath) -> Nets:

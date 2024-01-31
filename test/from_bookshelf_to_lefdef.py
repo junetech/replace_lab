@@ -88,27 +88,26 @@ def write_to_lefdef(pd_data: PhysDesignData, aux_path: PurePath):
             b_str = f"MACRO {cell_name}\n  CLASS CORE ;\n"
             b_str += "  SITE core ;\n"
             b_str += f"  SIZE {cell.dx} BY {cell.dy} ;\n"
-            # input pin
-            for pin_name in pd_data.nets.get_input_pins(cell_name):
-                b_str += f"  PIN {pin_name}\n"
-                b_str += "    DIRECTION INPUT ;\n"
-                b_str += "    PORT\n      LAYER metal1 ;\n"
-                x_offset, y_offset = pd_data.nets.pin_dict[pin_name].offset
-                lx, ly = x_offset - half_pin_dimension, y_offset - half_pin_dimension
-                hx, hy = x_offset + half_pin_dimension, y_offset + half_pin_dimension
-                b_str += f"        RECT ( {lx} {ly} ) ( {hx} {hy} ) ;\n"
-                b_str += f"  END {pin_name}\n"
-            # output pin
-            for pin_name in pd_data.nets.get_output_pins(cell_name):
-                b_str += f"  PIN {pin_name}\n"
-                b_str += "    DIRECTION OUTPUT ;\n"
-                b_str += "    PORT\n      LAYER metal1 ;\n"
-                x_offset, y_offset = pd_data.nets.pin_dict[pin_name].offset
-                lx, ly = x_offset - half_pin_dimension, y_offset - half_pin_dimension
-                hx, hy = x_offset + half_pin_dimension, y_offset + half_pin_dimension
-                b_str += f"        RECT ( {lx} {ly} ) ( {hx} {hy} ) ;\n"
-                b_str += f"  END {pin_name}\n"
+            # pin
+            for pin_name in pd_data.nets.get_pins(cell_name):
+                pin = pd_data.nets.pin_dict[pin_name]
+                direction = pin.io
+                x_offset, y_offset = pin.offset
 
+                b_str += f"  PIN {pin_name}\n"
+                match direction:
+                    case "I":
+                        b_str += "    DIRECTION INPUT ;\n"
+                    case "O":
+                        b_str += "    DIRECTION OUTPUT ;\n"
+                    case "B":
+                        b_str += "    DIRECTION INOUT ;\n"
+
+                b_str += "    PORT\n      LAYER metal1 ;\n"
+                lx, ly = x_offset - half_pin_dimension, y_offset - half_pin_dimension
+                hx, hy = x_offset + half_pin_dimension, y_offset + half_pin_dimension
+                b_str += f"        RECT ( {lx} {ly} ) ( {hx} {hy} ) ;\n"
+                b_str += f"  END {pin_name}\n"
             b_str += f"END {cell_name}\n\n"
             file.write(b_str)
         # EoF
