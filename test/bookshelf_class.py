@@ -507,6 +507,7 @@ class Net:
 
 class Nets:
     def __init__(self):
+        # node name -> pin coordinate -> pin name
         self.pin_coord_dict: dict[str, dict[tuple[float, float], str]] = {}
         self.pin_type_count: dict[str, dict[str, int]] = {}
         self.pin_dict: dict[str, Pin] = {}
@@ -611,9 +612,3 @@ def read_net_input(nets_path: PurePath) -> Nets:
         print(Warning(_str))
 
     return nets
-
-
-class PhysDesignData:
-    region: Region
-    object_db: ObjectDB
-    nets: Nets

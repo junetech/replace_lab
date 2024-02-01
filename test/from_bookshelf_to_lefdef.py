@@ -4,11 +4,14 @@ import sys
 from pathlib import PurePath
 
 from bookshelf_class import (
-    PhysDesignData,
     read_net_input,
     read_node_input,
     read_placement_input,
     read_row_input,
+)
+from macro_component_maker import (
+    PhysDesignData,
+    make_macros_and_components_from_bookshelf,
 )
 
 
@@ -77,10 +80,12 @@ def read_bookshelf(aux_path: PurePath) -> PhysDesignData:
     object_db = read_node_input(node_path)
     read_placement_input(pl_path, object_db)
     nets = read_net_input(nets_path)
+    macro_list, comp_list = make_macros_and_components_from_bookshelf(object_db, nets)
 
     pd_data = PhysDesignData()
     pd_data.region = region
-    pd_data.object_db = object_db
+    pd_data.macros = macro_list
+    pd_data.components = comp_list
     pd_data.nets = nets
 
     return pd_data
@@ -104,15 +109,16 @@ def write_to_lefdef(pd_data: PhysDesignData, aux_path: PurePath):
         b_str = f"UNITS\n  DATABASE MICRONS {database_microns} ;\nEND UNITS\n\n"
         file.write(b_str)
         # MACRO
-        for cell_name, cell in pd_data.object_db.nodes.items():
-            b_str = f"MACRO {cell_name}\n  CLASS CORE ;\n"
+        for macro in pd_data.macros:
+            m_name = macro.name
+            b_str = f"MACRO {m_name}\n  CLASS CORE ;\n"
             b_str += "  SITE core ;\n"
-            b_str += f"  SIZE {cell.dx} BY {cell.dy} ;\n"
+            b_str += f"  SIZE {macro.dx} BY {macro.dy} ;\n"
             # pin
-            for pin_name in pd_data.nets.get_pins(cell_name):
+            for pin_offset, pin_name in macro.pin_dict.items():
                 pin = pd_data.nets.pin_dict[pin_name]
                 direction = pin.io
-                x_offset, y_offset = pin.offset
+                x_offset, y_offset = pin_offset
 
                 b_str += f"  PIN {pin_name}\n"
                 match direction:
@@ -128,7 +134,7 @@ def write_to_lefdef(pd_data: PhysDesignData, aux_path: PurePath):
                 hx, hy = x_offset + half_pin_dimension, y_offset + half_pin_dimension
                 b_str += f"        RECT ( {lx} {ly} ) ( {hx} {hy} ) ;\n"
                 b_str += f"  END {pin_name}\n"
-            b_str += f"END {cell_name}\n\n"
+            b_str += f"END {m_name}\n\n"
             file.write(b_str)
         # SITE
         b_str = f"SITE {the_site_name}\n"
@@ -160,19 +166,16 @@ def write_to_lefdef(pd_data: PhysDesignData, aux_path: PurePath):
         file.write(b_str)
 
         # Components
-        b_str = f"COMPONENTS {pd_data.object_db.num_entry()} ;\n"
-        comp_idx = 0
-        for cell_id, cell in pd_data.object_db.nodes.items():
-            comp_id = f"C_{comp_idx}"
-            r_str = f"- {comp_id} {cell_id} + "
-            if cell.is_fixed:
-                r_str += f"FIXED ( {cell.lx} {cell.ly} ) N ;\n"
-            else:
-                r_str += "UNPLACED N ;\n"
+        b_str = f"COMPONENTS {len(pd_data.components)} ;\n"
+        for compon in pd_data.components:
+            r_str = f"- {compon.name} {compon.macro_name} + {compon.place_status} "
+            if compon.place_status == "FIXED":
+                r_str += f"( {compon.lx} {compon.ly} ) "
+            r_str += "N ;\n"
             b_str += r_str
-            comp_idx += 1
         b_str += "END COMPONENT\n"
         file.write(b_str)
+
         # Pins
 
         # Nets
