@@ -26,4 +26,6 @@ CMakeCache.txt
 CMakeFiles
 install_manifest.txt
 build
+
 *.pyc
+test/ispd2005/

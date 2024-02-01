@@ -150,15 +150,29 @@ def write_to_lefdef(pd_data: PhysDesignData, aux_path: PurePath):
         file.write(b_str)
 
         # Rows
+        b_str = ""
         for row_id, row_ly, row_lx, row_hx in pd_data.region.row_coord_iter():
             num_sites_f = (row_hx - row_lx) / the_site_spacing
             num_sites: int = int(proper_round(num_sites_f))
-            b_str = f"ROW {row_id} {the_site_name} {row_ly} {row_lx} N "
-            b_str += f"DO {num_sites} BY 1 ;\n"
-            file.write(b_str)
+            r_str = f"ROW {row_id} {the_site_name} {row_ly} {row_lx} N "
+            r_str += f"DO {num_sites} BY 1 ;\n"
+            b_str += r_str
+        file.write(b_str)
 
         # Components
-
+        b_str = f"COMPONENTS {pd_data.object_db.num_entry()} ;\n"
+        comp_idx = 0
+        for cell_id, cell in pd_data.object_db.nodes.items():
+            comp_id = f"C_{comp_idx}"
+            r_str = f"- {comp_id} {cell_id} + "
+            if cell.is_fixed:
+                r_str += f"FIXED ( {cell.lx} {cell.ly} ) N ;\n"
+            else:
+                r_str += "UNPLACED N ;\n"
+            b_str += r_str
+            comp_idx += 1
+        b_str += "END COMPONENT\n"
+        file.write(b_str)
         # Pins
 
         # Nets
