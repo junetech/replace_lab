@@ -1,11 +1,16 @@
 import math
 from pathlib import PurePath
+from typing import Iterator
 
 
 class Region:
-    default_site_dim: tuple[int, int]
+    default_row_height: int
+    default_site_spacing: int
 
-    def __init__(self):
+    def __init__(self, default_row_height: int, default_site_spacing: int):
+        self.default_row_height = default_row_height
+        self.default_site_spacing = default_site_spacing
+
         # stores row_y_low value for each row.
         self.RowDB: list[int] = []
         # starting X coordinate of each row
@@ -21,6 +26,10 @@ class Region:
         self.hy = -99999
 
         self.total_row_area = 0
+
+    @property
+    def default_site_dim(self) -> tuple[int, int]:
+        return (self.default_row_height, self.default_site_spacing)
 
     def num_rows(self) -> int:
         return len(self.RowDB)
@@ -45,9 +54,15 @@ class Region:
         if self.hy < row_y + row_height:
             self.hy = row_y + row_height
 
+    def row_coord_iter(self) -> Iterator[tuple[str, int, int, int]]:
+        for row_idx, coord in enumerate(
+            zip(self.RowDB, self.RowDBstartX, self.RowDBendX)
+        ):
+            yield (f"ROW_{row_idx}", coord[0], coord[1], coord[2])
+
 
 def read_row_input(
-    scl_file: PurePath, default_row_height: int, default_site_width: int
+    scl_file: PurePath, default_row_height: int, default_site_spacing: int
 ) -> Region:
     """reads row input file and returns an instance of class Region
 
@@ -63,8 +78,7 @@ def read_row_input(
     """
     file = open(scl_file, "r")
     line_idx = 0
-    region = Region()
-    region.default_site_dim = (default_row_height, default_site_width)
+    region = Region(default_row_height, default_site_spacing)
 
     row_height = default_row_height
     num_processed_rows = 0

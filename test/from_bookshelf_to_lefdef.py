@@ -12,6 +12,22 @@ from bookshelf_class import (
 )
 
 
+def proper_round(num, dec=0) -> float:
+    """https://stackoverflow.com/questions/31818050/round-number-to-nearest-integer
+
+    Args:
+        num (_type_)
+        dec (int, optional): Defaults to 0.
+
+    Returns:
+        float
+    """
+    num = str(num)[: str(num).index(".") + dec + 2]
+    if num[-1] >= "5":
+        return float(num[: -2 - (not dec)] + str(int(num[-2 - (not dec)]) + 1))
+    return float(num[:-1])
+
+
 def read_bookshelf(aux_path: PurePath) -> PhysDesignData:
     """Read Bookshelf format data
     reference: check_density_target.pl from ISPD 2006
@@ -24,7 +40,7 @@ def read_bookshelf(aux_path: PurePath) -> PhysDesignData:
     """
     # DO NOT CHANGE. All circuit row height is 12
     default_row_height = 12
-    default_site_width = 1
+    default_site_spacing = 1
     # default density target
     # density_target = 0.5
     # default bin size = 10 circuit row height x 10 circuit row height
@@ -57,7 +73,7 @@ def read_bookshelf(aux_path: PurePath) -> PhysDesignData:
 
     # read_placement_input(pl_path, object_db)
 
-    region = read_row_input(scl_path, default_row_height, default_site_width)
+    region = read_row_input(scl_path, default_row_height, default_site_spacing)
     object_db = read_node_input(node_path)
     read_placement_input(pl_path, object_db)
     nets = read_net_input(nets_path)
@@ -73,6 +89,9 @@ def read_bookshelf(aux_path: PurePath) -> PhysDesignData:
 def write_to_lefdef(pd_data: PhysDesignData, aux_path: PurePath):
     output_dir, output_filename = aux_path.parent, aux_path.stem + "_lefdef"
     half_pin_dimension = 0.1
+    the_site_name = "defaultS"
+    the_row_height = pd_data.region.default_row_height
+    the_site_spacing = pd_data.region.default_site_spacing
 
     # write LEF
     lef_path = PurePath(output_dir, output_filename + ".lef")
@@ -112,13 +131,37 @@ def write_to_lefdef(pd_data: PhysDesignData, aux_path: PurePath):
             b_str += f"END {cell_name}\n\n"
             file.write(b_str)
         # SITE
-        b_str = "SITE defaultS\n"
-        size_str = f"{pd_data.region.default_site_dim[0]} BY {pd_data.region.default_site_dim[1]}"
+        b_str = f"SITE {the_site_name}\n"
+        size_str = f"{the_row_height} BY {the_site_spacing}"
         b_str += f"  CLASS CORE ;\n  SIZE {size_str} ;\n"
-        b_str += "END defaultS\n"
+        b_str += f"END {the_site_name}\n"
         file.write(b_str)
         # EoF
         file.write("END LIBRARY\n")
+
+    # write DEF
+    def_path = PurePath(output_dir, output_filename + ".def")
+    with open(def_path, "w") as file:
+        b_str = f"VERSION {product_version} ;\n"
+        b_str += f"DESIGN {output_filename} ;\n"
+        lx, ly = pd_data.region.lx, pd_data.region.ly
+        hx, hy = pd_data.region.hx, pd_data.region.hy
+        b_str += f"DIEAREA ( {lx} {ly} ) ( {hx} {hy} ) ;\n"
+        file.write(b_str)
+
+        # Rows
+        for row_id, row_ly, row_lx, row_hx in pd_data.region.row_coord_iter():
+            num_sites_f = (row_hx - row_lx) / the_site_spacing
+            num_sites: int = int(proper_round(num_sites_f))
+            b_str = f"ROW {row_id} {the_site_name} {row_ly} {row_lx} N "
+            b_str += f"DO {num_sites} BY 1 ;\n"
+            file.write(b_str)
+
+        # Components
+
+        # Pins
+
+        # Nets
     return True
 
 
