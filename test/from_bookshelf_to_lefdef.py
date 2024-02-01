@@ -93,32 +93,91 @@ def read_bookshelf(aux_path: PurePath) -> PhysDesignData:
 
 def write_to_lefdef(pd_data: PhysDesignData, aux_path: PurePath):
     output_dir, output_filename = aux_path.parent, aux_path.stem + "_lefdef"
-    half_pin_dimension = 0.1
-    the_site_name = "defaultS"
-    the_row_height = pd_data.region.default_row_height
-    the_site_spacing = pd_data.region.default_site_spacing
+    half_pin_width, half_pin_height = 0.045, 0.06
+    database_microns = 100
+    the_site_name = "ASite"
+    lefdef_row_height = pd_data.region.default_row_height / database_microns
+    lefdef_site_spacing = pd_data.region.default_site_spacing / database_microns
 
     # write LEF
     lef_path = PurePath(output_dir, output_filename + ".lef")
     product_version = 5.8
-    # Units
-    database_microns = 100
     with open(lef_path, "w") as file:
         # LEF/DEF product version
         file.write(f"VERSION {product_version} ;\n")
+        # Units
         b_str = f"UNITS\n  DATABASE MICRONS {database_microns} ;\nEND UNITS\n\n"
         file.write(b_str)
+
+        # LAYER definition
+        b_str = """LAYER poly
+    TYPE MASTERSLICE ;
+END poly
+
+LAYER cont
+    TYPE CUT ;
+END cont
+
+LAYER metal1
+    TYPE ROUTING ;
+    PITCH 1.7 ;
+    WIDTH .8 ;
+    SPACING .6 ;
+    DIRECTION HORIZONTAL ;
+END metal1
+
+LAYER via1
+    TYPE CUT ;
+END via1
+
+LAYER metal2
+    TYPE ROUTING ;
+    PITCH 2 ;
+    WIDTH .8 ;
+    SPACING .9 ;
+    DIRECTION VERTICAL ;
+END metal2
+
+LAYER via2
+    TYPE CUT ;
+END via2
+
+LAYER metal3
+    TYPE ROUTING ;
+    PITCH 1.7 ;
+    WIDTH .8 ;
+    SPACING .9 ;
+    DIRECTION HORIZONTAL ;
+END metal3
+
+LAYER OVERLAP
+    TYPE OVERLAP ;
+END OVERLAP\n\n"""
+        file.write(b_str)
+
+        # SITE
+        b_str = f"SITE {the_site_name}\n"
+        size_str = f"{lefdef_site_spacing} BY {lefdef_row_height}"
+        b_str += f"  CLASS CORE ;\n  SIZE {size_str} ;\n"
+        b_str += f"END {the_site_name}\n"
+        file.write(b_str)
+
         # MACRO
         for macro in pd_data.macros:
             m_name = macro.name
             b_str = f"MACRO {m_name}\n  CLASS CORE ;\n"
             b_str += "  SITE core ;\n"
-            b_str += f"  SIZE {macro.dx} BY {macro.dy} ;\n"
+            lefdef_dx = macro.dx / database_microns
+            lefdef_dy = macro.dy / database_microns
+            b_str += f"  SIZE {lefdef_dx} BY {lefdef_dy} ;\n"
             # pin
             for pin_offset, pin_name in macro.pin_dict.items():
                 pin = pd_data.nets.pin_dict[pin_name]
                 direction = pin.io
                 x_offset, y_offset = pin_offset
+                # bookshelf offset starts from the center, LEF/DEF starts from origin
+                lefdef_x_center = x_offset / database_microns + lefdef_dx / 2
+                lefdef_y_center = y_offset / database_microns + lefdef_dy / 2
 
                 b_str += f"  PIN {pin_name}\n"
                 match direction:
@@ -130,50 +189,50 @@ def write_to_lefdef(pd_data: PhysDesignData, aux_path: PurePath):
                         b_str += "    DIRECTION INOUT ;\n"
 
                 b_str += "    PORT\n      LAYER metal1 ;\n"
-                lx, ly = x_offset - half_pin_dimension, y_offset - half_pin_dimension
-                hx, hy = x_offset + half_pin_dimension, y_offset + half_pin_dimension
-                b_str += f"        RECT ( {lx} {ly} ) ( {hx} {hy} ) ;\n"
+                lx = lefdef_x_center - half_pin_width / database_microns
+                ly = lefdef_y_center - half_pin_height / database_microns
+                hx = lefdef_x_center + half_pin_width / database_microns
+                hy = lefdef_y_center + half_pin_height / database_microns
+                b_str += f"        RECT {lx} {ly} {hx} {hy} ;\n"
+                b_str += "    END\n"
                 b_str += f"  END {pin_name}\n"
             b_str += f"END {m_name}\n\n"
             file.write(b_str)
-        # SITE
-        b_str = f"SITE {the_site_name}\n"
-        size_str = f"{the_row_height} BY {the_site_spacing}"
-        b_str += f"  CLASS CORE ;\n  SIZE {size_str} ;\n"
-        b_str += f"END {the_site_name}\n"
-        file.write(b_str)
+
         # EoF
-        file.write("END LIBRARY\n")
+        file.write("\nEND LIBRARY\n")
 
     # write DEF
     def_path = PurePath(output_dir, output_filename + ".def")
     with open(def_path, "w") as file:
         b_str = f"VERSION {product_version} ;\n"
         b_str += f"DESIGN {output_filename} ;\n"
+        b_str += f"UNITS DISTANCE MICRONS {database_microns} ;\n"
         lx, ly = pd_data.region.lx, pd_data.region.ly
         hx, hy = pd_data.region.hx, pd_data.region.hy
         b_str += f"DIEAREA ( {lx} {ly} ) ( {hx} {hy} ) ;\n"
         file.write(b_str)
 
         # Rows
-        b_str = ""
+        b_str = "\n"
         for row_id, row_ly, row_lx, row_hx in pd_data.region.row_coord_iter():
-            num_sites_f = (row_hx - row_lx) / the_site_spacing
+            num_sites_f = (row_hx - row_lx) / pd_data.region.default_site_spacing
             num_sites: int = int(proper_round(num_sites_f))
-            r_str = f"ROW {row_id} {the_site_name} {row_ly} {row_lx} N "
+            r_str = f"ROW {row_id} {the_site_name} {row_lx} {row_ly} N "
             r_str += f"DO {num_sites} BY 1 ;\n"
+            # r_str += f"DO {num_sites} BY 1 STEP {lefdef_site_spacing} {lefdef_row_height} ;\n"
             b_str += r_str
         file.write(b_str)
 
         # Components
         b_str = f"\nCOMPONENTS {len(pd_data.components)} ;\n"
         for compon in pd_data.components:
-            r_str = f"- {compon.name} {compon.macro_name} + {compon.place_status} "
+            r_str = f"- {compon.name} {compon.macro_name} "
             if compon.place_status == "FIXED":
-                r_str += f"( {compon.lx} {compon.ly} ) "
-            r_str += "N ;\n"
+                r_str += f"+ FIXED ( {compon.lx} {compon.ly} ) N "
+            r_str += ";\n"
             b_str += r_str
-        b_str += "END COMPONENT\n"
+        b_str += "END COMPONENTS\n"
         file.write(b_str)
 
         # Nets
