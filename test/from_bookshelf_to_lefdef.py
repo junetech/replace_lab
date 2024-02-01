@@ -166,7 +166,7 @@ def write_to_lefdef(pd_data: PhysDesignData, aux_path: PurePath):
         file.write(b_str)
 
         # Components
-        b_str = f"COMPONENTS {len(pd_data.components)} ;\n"
+        b_str = f"\nCOMPONENTS {len(pd_data.components)} ;\n"
         for compon in pd_data.components:
             r_str = f"- {compon.name} {compon.macro_name} + {compon.place_status} "
             if compon.place_status == "FIXED":
@@ -176,9 +176,19 @@ def write_to_lefdef(pd_data: PhysDesignData, aux_path: PurePath):
         b_str += "END COMPONENT\n"
         file.write(b_str)
 
-        # Pins
-
         # Nets
+        b_str = f"\nNETS {len(pd_data.nets.net_dict)} ;\n"
+        for net_name, net in pd_data.nets.net_dict.items():
+            r_str = f"- {net_name}"
+            for pin_name in net.pin_names:
+                pin = pd_data.nets.pin_dict[pin_name]
+                r_str += f" ( {pin.cell_name} {pin_name} )"
+            r_str += " ;\n"
+            b_str += r_str
+        b_str += "END NETS\n"
+        file.write(b_str)
+
+        file.write("\nEND DESIGN\n")
     return True
 
 

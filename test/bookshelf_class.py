@@ -591,11 +591,10 @@ def read_net_input(nets_path: PurePath) -> Nets:
                 current_pin += 1
                 cell_name, io, _, x_offset_str, y_offset_str = line.split()
                 try:
-                    pin_names = nets.add_pin(
+                    pin_name = nets.add_pin(
                         cell_name, io, eval(x_offset_str), eval(y_offset_str)
                     )
-                    for name in pin_names:
-                        nets.assign_pin(name, net_name)
+                    nets.assign_pin(pin_name, net_name)
                 except ValueError:
                     print(line.split())
                     raise UserWarning
