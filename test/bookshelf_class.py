@@ -3,6 +3,8 @@ from pathlib import PurePath
 
 
 class Region:
+    default_site_dim: tuple[int, int]
+
     def __init__(self):
         # stores row_y_low value for each row.
         self.RowDB: list[int] = []
@@ -44,7 +46,9 @@ class Region:
             self.hy = row_y + row_height
 
 
-def read_row_input(scl_file: PurePath, default_row_height: int) -> Region:
+def read_row_input(
+    scl_file: PurePath, default_row_height: int, default_site_width: int
+) -> Region:
     """reads row input file and returns an instance of class Region
 
     Args:
@@ -60,6 +64,7 @@ def read_row_input(scl_file: PurePath, default_row_height: int) -> Region:
     file = open(scl_file, "r")
     line_idx = 0
     region = Region()
+    region.default_site_dim = (default_row_height, default_site_width)
 
     row_height = default_row_height
     num_processed_rows = 0

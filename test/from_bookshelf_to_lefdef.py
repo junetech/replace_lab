@@ -24,6 +24,7 @@ def read_bookshelf(aux_path: PurePath) -> PhysDesignData:
     """
     # DO NOT CHANGE. All circuit row height is 12
     default_row_height = 12
+    default_site_width = 1
     # default density target
     # density_target = 0.5
     # default bin size = 10 circuit row height x 10 circuit row height
@@ -56,7 +57,7 @@ def read_bookshelf(aux_path: PurePath) -> PhysDesignData:
 
     # read_placement_input(pl_path, object_db)
 
-    region = read_row_input(scl_path, default_row_height)
+    region = read_row_input(scl_path, default_row_height, default_site_width)
     object_db = read_node_input(node_path)
     read_placement_input(pl_path, object_db)
     nets = read_net_input(nets_path)
@@ -74,10 +75,10 @@ def write_to_lefdef(pd_data: PhysDesignData, aux_path: PurePath):
     half_pin_dimension = 0.1
 
     # write LEF
+    lef_path = PurePath(output_dir, output_filename + ".lef")
     product_version = 5.8
     # Units
     database_microns = 100
-    lef_path = PurePath(output_dir, output_filename + ".lef")
     with open(lef_path, "w") as file:
         # LEF/DEF product version
         file.write(f"VERSION {product_version} ;\n")
@@ -110,6 +111,12 @@ def write_to_lefdef(pd_data: PhysDesignData, aux_path: PurePath):
                 b_str += f"  END {pin_name}\n"
             b_str += f"END {cell_name}\n\n"
             file.write(b_str)
+        # SITE
+        b_str = "SITE defaultS\n"
+        size_str = f"{pd_data.region.default_site_dim[0]} BY {pd_data.region.default_site_dim[1]}"
+        b_str += f"  CLASS CORE ;\n  SIZE {size_str} ;\n"
+        b_str += "END defaultS\n"
+        file.write(b_str)
         # EoF
         file.write("END LIBRARY\n")
     return True
