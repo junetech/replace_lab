@@ -1,5 +1,5 @@
 set design bigblue4_lefdef
-set bench_dir ./ispd2005/bigblue4/
+set bench_dir ./ispd2005/bigblue4
 
 replace_external rep
 

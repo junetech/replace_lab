@@ -1,5 +1,5 @@
 set design adaptec4_lefdef
-set bench_dir ./ispd2005/adaptec4/
+set bench_dir ./ispd2005/adaptec4
 
 replace_external rep
 
